@@ -18,6 +18,9 @@ public class MusicService extends Service {
 
     private MediaPlayer musicPlayer ;
     String songURI;
+    boolean isFirst = true;
+    boolean isPlaying =false;
+
 
     @Override
     public void onCreate() {
@@ -27,6 +30,7 @@ public class MusicService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        isFirst = true;
         if(musicPlayer != null)
         {
             musicPlayer.stop();
@@ -42,14 +46,26 @@ public class MusicService extends Service {
         switch (msg)
         {
             case APPConstant.PLAY:
-                initMedia();
+                if(isFirst)
+                {
+                    initMedia();
+                    isFirst = false;
+                }
                 playMusic();
                 break;
             case APPConstant.PAUSE:
+
                 pauseMusic();
+
                 break;
             case APPConstant.STOP:
+
                 stopMusic();
+
+                break;
+            case APPConstant.RESUME:
+
+                resumeMusic();
                 break;
         }
 
@@ -66,20 +82,19 @@ public class MusicService extends Service {
     }
 
 
-
     private void initMedia(){
 
         musicPlayer = new MediaPlayer();
-
+     //   musicPlayer.setAudioStreamType();
 
     }
 
 
     /**
-     * start to play music
+     * start to prepare and play music
      */
     private void playMusic(){
-        Log.v("gjh","kaishi######");
+
         musicPlayer.reset();
         try {
             musicPlayer.setDataSource(songURI);
@@ -90,6 +105,14 @@ public class MusicService extends Service {
         musicPlayer.start();
     }
 
+
+    private void resumeMusic(){
+        if(musicPlayer != null && !musicPlayer.isPlaying())
+        {
+            musicPlayer.start();
+        }
+    }
+
     /**
      * pause music
      */
@@ -97,6 +120,7 @@ public class MusicService extends Service {
         if(musicPlayer != null && musicPlayer.isPlaying())
         {
             musicPlayer.pause();
+
         }
     }
 

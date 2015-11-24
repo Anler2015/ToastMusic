@@ -16,8 +16,10 @@ import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
+import android.widget.TextView;
 
 import com.gejiahui.toastmusic.R;
 import com.gejiahui.toastmusic.adapter.SongListAdapter;
@@ -25,6 +27,7 @@ import com.gejiahui.toastmusic.model.APPConstant;
 import com.gejiahui.toastmusic.model.Mp3Info;
 import com.gejiahui.toastmusic.service.MusicService;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +38,12 @@ public class MainActivity extends AppCompatActivity {
     Button btnStop;
     FloatingActionButton fab;
     ListView songsList;
-    int playingPostion = 0;
+    TextView txt_songDuration;
+    TextView txt_playTime;
+    LinearLayout songTime;
+    int playingPosition = 0;
+    boolean isPlaying = false;
+    boolean isPause = false;
     List<Mp3Info> mp3Infos = new ArrayList<Mp3Info>();
 
     @Override
@@ -113,6 +121,9 @@ public class MainActivity extends AppCompatActivity {
         fab = (FloatingActionButton) findViewById(R.id.fab);
         songsList = (ListView)findViewById(R.id.songsList);
         btnStop = (Button) findViewById(R.id.btnStop);
+        txt_songDuration = (TextView)findViewById(R.id.songDuration);
+        txt_playTime = (TextView)findViewById(R.id.playtime);
+       songTime = (LinearLayout)findViewById(R.id.song_time);
     }
 
     /**
@@ -122,6 +133,7 @@ public class MainActivity extends AppCompatActivity {
     {
         btnAudioPlay.setOnClickListener(btnClickListener);
         btnNextSong.setOnClickListener(btnClickListener);
+        btnStop.setOnClickListener(btnClickListener);
         songsList.setOnItemClickListener( itemClickListener);
 
         fab.setOnClickListener(new OnClickListener() {
@@ -140,22 +152,48 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onClick(View v) {
             Intent intent = new Intent(MainActivity.this, MusicService.class);
+            Log.v("gjh","isPlaying"+isPlaying);
             switch(v.getId())
             {
+
                 case R.id.btnAudioPlay:
-                    intent.putExtra("msg",APPConstant.PLAY);
-                    intent.putExtra("uri",mp3Infos.get(playingPostion).getUrl());
+                    if(isPlaying == false)
+                    {
+                        if(isPause ==false)
+                        {
+                            intent.putExtra("msg",APPConstant.PLAY);
+                            intent.putExtra("uri",mp3Infos.get(playingPosition).getUrl());
+                        }
+                        else
+                        {
+                            intent.putExtra("msg",APPConstant.RESUME);
+                        }
+
+                        isPlaying = true;
+                        isPause = false;
+                        showSongTime();
+                    }
+                    else
+                    {
+                        intent.putExtra("msg",APPConstant.PAUSE);
+                        isPlaying = false;
+                        isPause = true ;
+                    }
                     startService(intent);
                     break;
                 case R.id.btnNextSong:
-                    playingPostion++;
+                    playingPosition++;
                     intent.putExtra("msg",APPConstant.PLAY);
-                    intent.putExtra("uri",mp3Infos.get(playingPostion).getUrl());
+                    intent.putExtra("uri",mp3Infos.get(playingPosition).getUrl());
                     startService(intent);
                     break;
 
                 case R.id.btnPreSong:
       ;
+                    break;
+                case R.id.btnStop:
+                    intent.putExtra("msg",APPConstant.STOP);
+                    startService(intent);
                     break;
             }
         }
@@ -167,9 +205,27 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, MusicService.class);
             intent.putExtra("uri",mp3Infos.get(position).getUrl());
             startService(intent);
+            isPlaying = true;
+            playingPosition = position;
+            showSongTime();
         }
     };
 
+    /**
+     * show song duration and playing time
+     */
+    private void showSongTime(){
+        songTime.setVisibility(View.VISIBLE);
+        txt_songDuration.setText(msToMinutes(mp3Infos.get(playingPosition).getDuration()));
+    }
 
+    private String msToMinutes(long time){
+        String result = "";
+        int minute = (int)time/1000/60;
+        int second = (int)time/1000%60;
+        DecimalFormat df=new DecimalFormat("00");
+        result = minute + ":"+df.format(second);
+        return result;
+    }
 
 }
