@@ -3,9 +3,9 @@ package com.gejiahui.toastmusic.service;
 import android.app.Service;
 import android.content.Intent;
 import android.media.MediaPlayer;
+import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import com.gejiahui.toastmusic.model.APPConstant;
 
@@ -16,6 +16,8 @@ import java.io.IOException;
  */
 public class MusicService extends Service {
 
+    int progress = 0;
+    ProgressIBinder myBind;
     private MediaPlayer musicPlayer ;
     String songURI;
     boolean isFirst = true;
@@ -25,6 +27,7 @@ public class MusicService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        myBind = new ProgressIBinder();
     }
 
     @Override
@@ -68,19 +71,14 @@ public class MusicService extends Service {
                 resumeMusic();
                 break;
         }
-
-
-
-
         return super.onStartCommand(intent, flags, startId);
     }
 
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return null;
+        return myBind;
     }
-
 
     private void initMedia(){
 
@@ -132,5 +130,18 @@ public class MusicService extends Service {
         {
             musicPlayer.stop();
         }
+    }
+
+
+
+
+    class ProgressIBinder extends Binder
+    {
+
+        public  int getProgress()
+        {
+            return progress;
+        }
+
     }
 }
