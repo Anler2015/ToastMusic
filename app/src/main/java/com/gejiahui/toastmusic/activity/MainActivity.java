@@ -1,6 +1,9 @@
 package com.gejiahui.toastmusic.activity;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -18,6 +21,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.SeekBar;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
@@ -36,16 +40,17 @@ public class MainActivity extends AppCompatActivity {
     Button btnNextSong ;
     Button btnPreSong ;
     Button btnStop;
+    SeekBar musicSeekbar;
     FloatingActionButton fab;
     ListView songsList;
     TextView txt_songDuration;
-    TextView txt_playTime;
+    TextView txt_currentTime;
     LinearLayout songTime;
     int playingPosition = 0;
-    boolean isPlaying = false;
+    static boolean isPlaying = false;
     boolean isPause = false;
     List<Mp3Info> mp3Infos = new ArrayList<Mp3Info>();
-
+    MusicReceiver mReceiver;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,7 +60,22 @@ public class MainActivity extends AppCompatActivity {
         initView();
         setListener();
         getMP3Info();
+        if(isPlaying) {
+            showSongTime(true);
+        }
 
+         mReceiver = new MusicReceiver();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(APPConstant.MUSIC_CURRENT);
+        intentFilter.addAction(APPConstant.MUSIC_DURATION);
+        registerReceiver(mReceiver, intentFilter);
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(mReceiver);
+        super.onDestroy();
     }
 
     @Override
@@ -122,8 +142,9 @@ public class MainActivity extends AppCompatActivity {
         songsList = (ListView)findViewById(R.id.songsList);
         btnStop = (Button) findViewById(R.id.btnStop);
         txt_songDuration = (TextView)findViewById(R.id.songDuration);
-        txt_playTime = (TextView)findViewById(R.id.playtime);
+        txt_currentTime = (TextView)findViewById(R.id.playtime);
        songTime = (LinearLayout)findViewById(R.id.song_time);
+        musicSeekbar = (SeekBar)findViewById(R.id.musicSeekbar);
     }
 
     /**
@@ -171,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
 
                         isPlaying = true;
                         isPause = false;
-                        showSongTime();
+                        showSongTime(true);
                     }
                     else
                     {
@@ -192,8 +213,11 @@ public class MainActivity extends AppCompatActivity {
       ;
                     break;
                 case R.id.btnStop:
+                    isPlaying = false;
+                    isPause = false;
                     intent.putExtra("msg",APPConstant.STOP);
                     startService(intent);
+                    showSongTime(false);
                     break;
             }
         }
@@ -207,18 +231,31 @@ public class MainActivity extends AppCompatActivity {
             startService(intent);
             isPlaying = true;
             playingPosition = position;
-            showSongTime();
+            showSongTime(true);
         }
     };
 
     /**
-     * show song duration and playing time
+     * show song duration and playing time or not
      */
-    private void showSongTime(){
-        songTime.setVisibility(View.VISIBLE);
-        txt_songDuration.setText(msToMinutes(mp3Infos.get(playingPosition).getDuration()));
+    private void showSongTime(boolean ifShow){
+        if(ifShow){
+            songTime.setVisibility(View.VISIBLE);
+            txt_songDuration.setText(msToMinutes(mp3Infos.get(playingPosition).getDuration()));
+        }else{
+            songTime.setVisibility(View.INVISIBLE);
+        }
+
     }
 
+
+
+
+    /**
+     *
+     * @param time
+     * @return
+     */
     private String msToMinutes(long time){
         String result = "";
         int minute = (int)time/1000/60;
@@ -227,5 +264,31 @@ public class MainActivity extends AppCompatActivity {
         result = minute + ":"+df.format(second);
         return result;
     }
+
+    /**
+     * 接收service返回的动作
+     */
+    class MusicReceiver extends BroadcastReceiver{
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Log.v("gjh", "action：  "+action);
+            //更新音乐播放时间
+            if(action.equals(APPConstant.MUSIC_CURRENT)){
+                int currentTime = intent.getIntExtra("currentTime",0);
+                txt_currentTime.setText(msToMinutes(currentTime));
+                musicSeekbar.setProgress(currentTime);
+
+            }
+            else if(action.equals(APPConstant.MUSIC_DURATION)){
+                int duration = intent.getIntExtra("duration",0);
+                musicSeekbar.setMax(duration);
+                Log.v("gjh", "歌曲更新");
+                Log.v("gjh","max:"+musicSeekbar.getMax());
+            }
+
+        }
+    }
+
 
 }
