@@ -77,8 +77,7 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
-         songURI = intent.getStringExtra("uri");
+        songURI = intent.getStringExtra("uri");
         int msg = intent.getIntExtra("msg",0);
         switch (msg)
         {
@@ -109,6 +108,12 @@ public class MusicService extends Service {
             case APPConstant.RESUME:
 
                 resumeMusic();
+
+                break;
+
+            case APPConstant.SLIDEING:
+                int seekPosition = intent.getIntExtra("seekPosition",0);
+                seekToMusic(seekPosition);
                 break;
         }
         return super.onStartCommand(intent, flags, startId);
@@ -154,7 +159,7 @@ public class MusicService extends Service {
     /**
      * pause music
      */
-    private void pauseMusic(){
+    private void pauseMusic() {
         if(musicPlayer != null && musicPlayer.isPlaying())
         {
             musicPlayer.pause();
@@ -165,12 +170,19 @@ public class MusicService extends Service {
     /**
      * stop music
      */
-    private void
-    stopMusic(){
+    private void stopMusic(){
         if (musicPlayer != null)
         {
             musicPlayer.stop();
         }
+    }
+
+    private void seekToMusic(int position){
+
+        if(musicPlayer != null ){
+            musicPlayer.seekTo(position);
+        }
+
     }
 
 

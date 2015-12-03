@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.design.widget.FloatingActionButton;
@@ -30,15 +31,18 @@ import com.gejiahui.toastmusic.adapter.SongListAdapter;
 import com.gejiahui.toastmusic.model.APPConstant;
 import com.gejiahui.toastmusic.model.Mp3Info;
 import com.gejiahui.toastmusic.service.MusicService;
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-    Button btnAudioPlay ;
-    Button btnNextSong ;
-    Button btnPreSong ;
+    Button btnAudioPlay;
+    Button btnNextSong;
+    Button btnPreSong;
     Button btnStop;
     SeekBar musicSeekbar;
     FloatingActionButton fab;
@@ -51,6 +55,12 @@ public class MainActivity extends AppCompatActivity {
     boolean isPause = false;
     List<Mp3Info> mp3Infos = new ArrayList<Mp3Info>();
     MusicReceiver mReceiver;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,15 +70,18 @@ public class MainActivity extends AppCompatActivity {
         initView();
         setListener();
         getMP3Info();
-        if(isPlaying) {
+        if (isPlaying) {
             showSongTime(true);
         }
 
-         mReceiver = new MusicReceiver();
+        mReceiver = new MusicReceiver();
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(APPConstant.MUSIC_CURRENT);
         intentFilter.addAction(APPConstant.MUSIC_DURATION);
         registerReceiver(mReceiver, intentFilter);
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
 
@@ -103,9 +116,8 @@ public class MainActivity extends AppCompatActivity {
     /**
      * get MP3 info from SD card
      */
-    private void getMP3Info()
-    {
-        Cursor mp3Curosr =  getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null,
+    private void getMP3Info() {
+        Cursor mp3Curosr = getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null,
                 null, null, MediaStore.Audio.Media.DEFAULT_SORT_ORDER);
         //if mp3Curosr == null , return
         if (null == mp3Curosr) {
@@ -113,8 +125,7 @@ public class MainActivity extends AppCompatActivity {
         }
         mp3Curosr.moveToFirst();
 
-        for(int i = 0; i < mp3Curosr.getCount();i++)
-        {
+        for (int i = 0; i < mp3Curosr.getCount(); i++) {
             Mp3Info mp3Info = new Mp3Info();
             mp3Info.setId(mp3Curosr.getLong(mp3Curosr.getColumnIndex(MediaStore.Audio.Media._ID))); //id
             mp3Info.setAlbum(mp3Curosr.getString(mp3Curosr.getColumnIndex(MediaStore.Audio.Media.ALBUM))); //album
@@ -126,37 +137,35 @@ public class MainActivity extends AppCompatActivity {
             mp3Infos.add(mp3Info);
             mp3Curosr.moveToNext();
         }
-        SongListAdapter adapter = new SongListAdapter(this,mp3Infos);
+        SongListAdapter adapter = new SongListAdapter(this, mp3Infos);
         songsList.setAdapter(adapter);
     }
 
     /**
      * init the widgets
      */
-    private void initView()
-    {
+    private void initView() {
         btnAudioPlay = (Button) findViewById(R.id.btnAudioPlay);
         btnNextSong = (Button) findViewById(R.id.btnNextSong);
         btnPreSong = (Button) findViewById(R.id.btnPreSong);
         fab = (FloatingActionButton) findViewById(R.id.fab);
-        songsList = (ListView)findViewById(R.id.songsList);
+        songsList = (ListView) findViewById(R.id.songsList);
         btnStop = (Button) findViewById(R.id.btnStop);
-        txt_songDuration = (TextView)findViewById(R.id.songDuration);
-        txt_currentTime = (TextView)findViewById(R.id.playtime);
-       songTime = (LinearLayout)findViewById(R.id.song_time);
-        musicSeekbar = (SeekBar)findViewById(R.id.musicSeekbar);
+        txt_songDuration = (TextView) findViewById(R.id.songDuration);
+        txt_currentTime = (TextView) findViewById(R.id.playtime);
+        songTime = (LinearLayout) findViewById(R.id.song_time);
+        musicSeekbar = (SeekBar) findViewById(R.id.musicSeekbar);
     }
 
     /**
      * set on their listener
      */
-    private void setListener()
-    {
+    private void setListener() {
         btnAudioPlay.setOnClickListener(btnClickListener);
         btnNextSong.setOnClickListener(btnClickListener);
         btnStop.setOnClickListener(btnClickListener);
-        songsList.setOnItemClickListener( itemClickListener);
-
+        songsList.setOnItemClickListener(itemClickListener);
+        musicSeekbar.setOnSeekBarChangeListener(mSeekBarChangeListener);
         fab.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -173,49 +182,44 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onClick(View v) {
             Intent intent = new Intent(MainActivity.this, MusicService.class);
-            Log.v("gjh","isPlaying"+isPlaying);
-            switch(v.getId())
-            {
+            Log.v("gjh", "isPlaying" + isPlaying);
+            switch (v.getId()) {
 
                 case R.id.btnAudioPlay:
-                    if(isPlaying == false)
-                    {
-                        if(isPause ==false)
-                        {
-                            intent.putExtra("msg",APPConstant.PLAY);
-                            intent.putExtra("uri",mp3Infos.get(playingPosition).getUrl());
-                        }
-                        else
-                        {
-                            intent.putExtra("msg",APPConstant.RESUME);
+                    if (isPlaying == false) {   //播放
+                        if (isPause == false) {
+                            intent.putExtra("msg", APPConstant.PLAY);
+                            intent.putExtra("uri", mp3Infos.get(playingPosition).getUrl());
+                        } else {
+                            intent.putExtra("msg", APPConstant.RESUME);
                         }
 
                         isPlaying = true;
                         isPause = false;
                         showSongTime(true);
-                    }
-                    else
-                    {
-                        intent.putExtra("msg",APPConstant.PAUSE);
+                    } else {   //暂停
+                        intent.putExtra("msg", APPConstant.PAUSE);
+
                         isPlaying = false;
-                        isPause = true ;
+                        isPause = true;
                     }
                     startService(intent);
                     break;
                 case R.id.btnNextSong:
                     playingPosition++;
-                    intent.putExtra("msg",APPConstant.PLAY);
-                    intent.putExtra("uri",mp3Infos.get(playingPosition).getUrl());
+                    intent.putExtra("msg", APPConstant.PLAY);
+                    intent.putExtra("uri", mp3Infos.get(playingPosition).getUrl());
                     startService(intent);
+                    showSongTime(true);
                     break;
 
                 case R.id.btnPreSong:
-      ;
+                    ;
                     break;
                 case R.id.btnStop:
                     isPlaying = false;
                     isPause = false;
-                    intent.putExtra("msg",APPConstant.STOP);
+                    intent.putExtra("msg", APPConstant.STOP);
                     startService(intent);
                     showSongTime(false);
                     break;
@@ -223,11 +227,15 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
+    /**
+     * listview item click listener
+     */
     AdapterView.OnItemClickListener itemClickListener = new AdapterView.OnItemClickListener() {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
             Intent intent = new Intent(MainActivity.this, MusicService.class);
-            intent.putExtra("uri",mp3Infos.get(position).getUrl());
+            intent.putExtra("uri", mp3Infos.get(position).getUrl());
             startService(intent);
             isPlaying = true;
             playingPosition = position;
@@ -235,14 +243,42 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+
+    /**
+     * seekbar listener
+     */
+    private SeekBar.OnSeekBarChangeListener mSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener()
+    {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+
+                Intent intent = new Intent(MainActivity.this, MusicService.class);
+                intent.putExtra("seekPosition", musicSeekbar.getProgress());
+                intent.putExtra("msg", APPConstant.SLIDEING);
+                startService(intent);
+
+
+        }
+    };
+
     /**
      * show song duration and playing time or not
      */
-    private void showSongTime(boolean ifShow){
-        if(ifShow){
+    private void showSongTime(boolean ifShow) {
+        if (ifShow) {
             songTime.setVisibility(View.VISIBLE);
             txt_songDuration.setText(msToMinutes(mp3Infos.get(playingPosition).getDuration()));
-        }else{
+        } else {
             songTime.setVisibility(View.INVISIBLE);
         }
 
@@ -252,39 +288,39 @@ public class MainActivity extends AppCompatActivity {
 
 
     /**
-     *
      * @param time
      * @return
      */
-    private String msToMinutes(long time){
+    private String msToMinutes(long time) {
         String result = "";
-        int minute = (int)time/1000/60;
-        int second = (int)time/1000%60;
-        DecimalFormat df=new DecimalFormat("00");
-        result = minute + ":"+df.format(second);
+        int minute = (int) time / 1000 / 60;
+        int second = (int) time / 1000 % 60;
+        DecimalFormat df = new DecimalFormat("00");
+        result = minute + ":" + df.format(second);
         return result;
     }
+
+
 
     /**
      * 接收service返回的动作
      */
-    class MusicReceiver extends BroadcastReceiver{
+    class MusicReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.v("gjh", "action：  "+action);
+            Log.v("gjh", "action：  " + action);
             //更新音乐播放时间
-            if(action.equals(APPConstant.MUSIC_CURRENT)){
-                int currentTime = intent.getIntExtra("currentTime",0);
+            if (action.equals(APPConstant.MUSIC_CURRENT)) {
+                int currentTime = intent.getIntExtra("currentTime", 0);
                 txt_currentTime.setText(msToMinutes(currentTime));
                 musicSeekbar.setProgress(currentTime);
 
-            }
-            else if(action.equals(APPConstant.MUSIC_DURATION)){
-                int duration = intent.getIntExtra("duration",0);
+            } else if (action.equals(APPConstant.MUSIC_DURATION)) {
+                int duration = intent.getIntExtra("duration", 0);
                 musicSeekbar.setMax(duration);
                 Log.v("gjh", "歌曲更新");
-                Log.v("gjh","max:"+musicSeekbar.getMax());
+                Log.v("gjh", "max:" + musicSeekbar.getMax());
             }
 
         }

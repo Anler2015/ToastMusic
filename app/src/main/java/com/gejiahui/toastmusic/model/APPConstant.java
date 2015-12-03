@@ -8,6 +8,7 @@ public class APPConstant {
     public static final int PAUSE = 1;
     public static final int STOP = 2;
     public static final int RESUME = 3;
+    public static final int SLIDEING = 4;
 
     public static final String MUSIC_CHANGE = "com.gjh.action.MUSIC_CHANGE";  //换歌曲
     public static final String CTL_ACTION = "com.gjh.action.CTL_ACTION";        //控制动作
