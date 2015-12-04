@@ -164,6 +164,7 @@ public class MainActivity extends AppCompatActivity {
         btnAudioPlay.setOnClickListener(btnClickListener);
         btnNextSong.setOnClickListener(btnClickListener);
         btnStop.setOnClickListener(btnClickListener);
+        btnPreSong.setOnClickListener(btnClickListener);
         songsList.setOnItemClickListener(itemClickListener);
         musicSeekbar.setOnSeekBarChangeListener(mSeekBarChangeListener);
         fab.setOnClickListener(new OnClickListener() {
@@ -207,6 +208,10 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case R.id.btnNextSong:
                     playingPosition++;
+                    if(playingPosition >= mp3Infos.size()){
+                        playingPosition = 0;
+                    }
+
                     intent.putExtra("msg", APPConstant.PLAY);
                     intent.putExtra("uri", mp3Infos.get(playingPosition).getUrl());
                     startService(intent);
@@ -214,7 +219,14 @@ public class MainActivity extends AppCompatActivity {
                     break;
 
                 case R.id.btnPreSong:
-                    ;
+                    playingPosition--;
+                    if(playingPosition < 0){
+                        playingPosition = mp3Infos.size()-1;
+                    }
+                    intent.putExtra("msg", APPConstant.PLAY);
+                    intent.putExtra("uri", mp3Infos.get(playingPosition).getUrl());
+                    startService(intent);
+                    showSongTime(true);
                     break;
                 case R.id.btnStop:
                     isPlaying = false;
