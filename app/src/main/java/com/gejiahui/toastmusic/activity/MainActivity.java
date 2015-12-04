@@ -31,6 +31,7 @@ import com.gejiahui.toastmusic.adapter.SongListAdapter;
 import com.gejiahui.toastmusic.model.APPConstant;
 import com.gejiahui.toastmusic.model.Mp3Info;
 import com.gejiahui.toastmusic.service.MusicService;
+import com.gejiahui.toastmusic.utensil.Helper;
 import com.google.android.gms.appindexing.Action;
 import com.google.android.gms.appindexing.AppIndex;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -50,10 +51,11 @@ public class MainActivity extends AppCompatActivity {
     TextView txt_songDuration;
     TextView txt_currentTime;
     LinearLayout songTime;
-    int playingPosition = 0;
+    int currentPosition = 0;
     static boolean isPlaying = false;
     boolean isPause = false;
     List<Mp3Info> mp3Infos = new ArrayList<Mp3Info>();
+    Helper helper;
     MusicReceiver mReceiver;
     /**
      * ATTENTION: This was auto-generated to implement the App Indexing API.
@@ -67,9 +69,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        helper = new Helper(this);
+        mp3Infos = helper.getMP3Info();
         initView();
         setListener();
-        getMP3Info();
         if (isPlaying) {
             showSongTime(true);
         }
@@ -114,34 +117,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     /**
-     * get MP3 info from SD card
-     */
-    private void getMP3Info() {
-        Cursor mp3Curosr = getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null,
-                null, null, MediaStore.Audio.Media.DEFAULT_SORT_ORDER);
-        //if mp3Curosr == null , return
-        if (null == mp3Curosr) {
-            return;
-        }
-        mp3Curosr.moveToFirst();
-
-        for (int i = 0; i < mp3Curosr.getCount(); i++) {
-            Mp3Info mp3Info = new Mp3Info();
-            mp3Info.setId(mp3Curosr.getLong(mp3Curosr.getColumnIndex(MediaStore.Audio.Media._ID))); //id
-            mp3Info.setAlbum(mp3Curosr.getString(mp3Curosr.getColumnIndex(MediaStore.Audio.Media.ALBUM))); //album
-            mp3Info.setDuration(mp3Curosr.getLong(mp3Curosr.getColumnIndex(MediaStore.Audio.Media.DURATION))); // the song duration
-            mp3Info.setSize(mp3Curosr.getLong(mp3Curosr.getColumnIndex(MediaStore.Audio.Media.SIZE)));   //file size
-            mp3Info.setUrl(mp3Curosr.getString(mp3Curosr.getColumnIndex(MediaStore.Audio.Media.DATA)));   //the file url
-            mp3Info.setTitle(mp3Curosr.getString(mp3Curosr.getColumnIndex(MediaStore.Audio.Media.TITLE)));   //song name
-            mp3Info.setSinger(mp3Curosr.getString(mp3Curosr.getColumnIndex(MediaStore.Audio.Media.ARTIST)));  //singer
-            mp3Infos.add(mp3Info);
-            mp3Curosr.moveToNext();
-        }
-        SongListAdapter adapter = new SongListAdapter(this, mp3Infos);
-        songsList.setAdapter(adapter);
-    }
-
-    /**
      * init the widgets
      */
     private void initView() {
@@ -155,6 +130,9 @@ public class MainActivity extends AppCompatActivity {
         txt_currentTime = (TextView) findViewById(R.id.playtime);
         songTime = (LinearLayout) findViewById(R.id.song_time);
         musicSeekbar = (SeekBar) findViewById(R.id.musicSeekbar);
+
+        SongListAdapter adapter = new SongListAdapter(this, mp3Infos);
+        songsList.setAdapter(adapter);
     }
 
     /**
@@ -190,7 +168,7 @@ public class MainActivity extends AppCompatActivity {
                     if (isPlaying == false) {   //播放
                         if (isPause == false) {
                             intent.putExtra("msg", APPConstant.PLAY);
-                            intent.putExtra("uri", mp3Infos.get(playingPosition).getUrl());
+                            intent.putExtra("currentPosition", currentPosition);
                         } else {
                             intent.putExtra("msg", APPConstant.RESUME);
                         }
@@ -207,24 +185,24 @@ public class MainActivity extends AppCompatActivity {
                     startService(intent);
                     break;
                 case R.id.btnNextSong:
-                    playingPosition++;
-                    if(playingPosition >= mp3Infos.size()){
-                        playingPosition = 0;
+                    currentPosition++;
+                    if(currentPosition >= mp3Infos.size()){
+                        currentPosition = 0;
                     }
 
                     intent.putExtra("msg", APPConstant.PLAY);
-                    intent.putExtra("uri", mp3Infos.get(playingPosition).getUrl());
+                    intent.putExtra("currentPosition", currentPosition);
                     startService(intent);
                     showSongTime(true);
                     break;
 
                 case R.id.btnPreSong:
-                    playingPosition--;
-                    if(playingPosition < 0){
-                        playingPosition = mp3Infos.size()-1;
+                    currentPosition--;
+                    if(currentPosition < 0){
+                        currentPosition = mp3Infos.size()-1;
                     }
                     intent.putExtra("msg", APPConstant.PLAY);
-                    intent.putExtra("uri", mp3Infos.get(playingPosition).getUrl());
+                    intent.putExtra("currentPosition", currentPosition);
                     startService(intent);
                     showSongTime(true);
                     break;
@@ -247,10 +225,10 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
             Intent intent = new Intent(MainActivity.this, MusicService.class);
-            intent.putExtra("uri", mp3Infos.get(position).getUrl());
+            intent.putExtra("currentPosition", position);
             startService(intent);
             isPlaying = true;
-            playingPosition = position;
+            currentPosition = position;
             showSongTime(true);
         }
     };
@@ -289,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
     private void showSongTime(boolean ifShow) {
         if (ifShow) {
             songTime.setVisibility(View.VISIBLE);
-            txt_songDuration.setText(msToMinutes(mp3Infos.get(playingPosition).getDuration()));
+     //       txt_songDuration.setText(msToMinutes(mp3Infos.get(playingPosition).getDuration()));
         } else {
             songTime.setVisibility(View.INVISIBLE);
         }
@@ -321,7 +299,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.v("gjh", "action：  " + action);
+  //          Log.v("gjh", "action：  " + action);
             //更新音乐播放时间
             if (action.equals(APPConstant.MUSIC_CURRENT)) {
                 int currentTime = intent.getIntExtra("currentTime", 0);
@@ -330,7 +308,9 @@ public class MainActivity extends AppCompatActivity {
 
             } else if (action.equals(APPConstant.MUSIC_DURATION)) {
                 int duration = intent.getIntExtra("duration", 0);
+                currentPosition = intent.getIntExtra("currentPosition", 0);
                 musicSeekbar.setMax(duration);
+                txt_songDuration.setText(msToMinutes(duration));
                 Log.v("gjh", "歌曲更新");
                 Log.v("gjh", "max:" + musicSeekbar.getMax());
             }

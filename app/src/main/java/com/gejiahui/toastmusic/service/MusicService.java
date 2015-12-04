@@ -3,7 +3,6 @@ package com.gejiahui.toastmusic.service;
 import android.app.Service;
 import android.content.Intent;
 import android.media.MediaPlayer;
-import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -11,8 +10,12 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.gejiahui.toastmusic.model.APPConstant;
-import java.io.IOException;
+import com.gejiahui.toastmusic.model.Mp3Info;
+import com.gejiahui.toastmusic.utensil.Helper;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -20,15 +23,14 @@ import java.io.IOException;
  */
 public class MusicService extends Service {
 
-    int progress = 0;
-    ProgressIBinder myBind;
     private MediaPlayer musicPlayer ;
     String songURI;
     boolean isFirst = true;
-    boolean isPlaying =false;
     int currentTime;
+    Helper helper;
+    List<Mp3Info> mp3Infos = new ArrayList<Mp3Info>();
+    int currentPosition = 0;
 
-    //服务要发送的一些Action
 
 
     /**
@@ -60,7 +62,8 @@ public class MusicService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        myBind = new ProgressIBinder();
+        helper = new Helper(this);
+        mp3Infos = helper.getMP3Info();
         timeHandler.sendEmptyMessage(1);
     }
 
@@ -77,7 +80,8 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        songURI = intent.getStringExtra("uri");
+        currentPosition = intent.getIntExtra("currentPosition",0);
+        songURI = mp3Infos.get(currentPosition).getUrl();
         int msg = intent.getIntExtra("msg",0);
         switch (msg)
         {
@@ -88,12 +92,8 @@ public class MusicService extends Service {
                     isFirst = false;
                 }
                 playMusic();
-
-                Intent boardIntent = new Intent();
-                boardIntent.setAction(APPConstant.MUSIC_DURATION);
-                boardIntent.putExtra("duration", musicPlayer.getDuration());
-                sendBroadcast(boardIntent);
-                Log.v("gjh", "###########" + musicPlayer.getDuration());
+                sendMusicDurationBroad();
+                Log.v("gjh", "currentPosition：" + currentPosition);
                 break;
             case APPConstant.PAUSE:
 
@@ -122,16 +122,48 @@ public class MusicService extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-        return myBind;
+        return null;
     }
 
+    /////////////////media 状态改变///////////////////////////
     private void initMedia(){
 
         musicPlayer = new MediaPlayer();
-     //   musicPlayer.setAudioStreamType();
+        musicPlayer.setOnCompletionListener(onCompletionListener);
+//        musicPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+//            @Override
+//            public void onCompletion(MediaPlayer mp) {
+//                Log.v("gjh","currentPosition  1："+currentPosition);
+//                currentPosition++;
+//                Log.v("gjh","currentPosition  2："+currentPosition);
+//                if (currentPosition >= mp3Infos.size()) {
+//                    currentPosition = 0;
+//                }
+//                Log.v("gjh","currentPosition  3："+currentPosition);
+//                songURI = mp3Infos.get(currentPosition).getUrl();
+//                playMusic();
+//                sendMusicDurationBroad();
+//            }
+//        });
+        //   musicPlayer.setAudioStreamType();
 
     }
 
+     MediaPlayer.OnCompletionListener onCompletionListener = new  MediaPlayer.OnCompletionListener(){
+         @Override
+         public void onCompletion(MediaPlayer mp) {
+             Log.v("gjh","currentPosition  1："+currentPosition);
+             currentPosition++;
+             Log.v("gjh","currentPosition  2："+currentPosition);
+             if (currentPosition >= mp3Infos.size()) {
+                 currentPosition = 0;
+             }
+             Log.v("gjh","currentPosition  3："+currentPosition);
+             songURI = mp3Infos.get(currentPosition).getUrl();
+             playMusic();
+             sendMusicDurationBroad();
+         }
+     };
 
     /**
      * start to prepare and play music
@@ -186,15 +218,14 @@ public class MusicService extends Service {
     }
 
 
-
-
-    class ProgressIBinder extends Binder
-    {
-
-        public  int getProgress()
-        {
-            return progress;
-        }
-
+///////////////发送广播i///////////////////////////////////////
+    private void sendMusicDurationBroad(){
+        Intent Intent = new Intent();
+        Intent.setAction(APPConstant.MUSIC_DURATION);
+        Intent.putExtra("duration", musicPlayer.getDuration());
+        Intent.putExtra("currentPosition", currentPosition);
+        sendBroadcast(Intent);
+        Log.v("gjh", "###########" + musicPlayer.getDuration());
     }
+
 }
