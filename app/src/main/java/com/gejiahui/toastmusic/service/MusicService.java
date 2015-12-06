@@ -2,18 +2,17 @@ package com.gejiahui.toastmusic.service;
 
 import android.app.Service;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.support.annotation.Nullable;
 import android.util.Log;
-
+import java.io.IOException;
 import com.gejiahui.toastmusic.model.APPConstant;
 import com.gejiahui.toastmusic.model.Mp3Info;
 import com.gejiahui.toastmusic.utensil.Helper;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +23,7 @@ import java.util.List;
 public class MusicService extends Service {
 
     private MediaPlayer musicPlayer ;
+    AudioManager audioManager;
     String songURI;
     boolean isFirst = true;
     int currentTime;
@@ -36,6 +36,7 @@ public class MusicService extends Service {
     /**
      * 一个循环的handler 用来更新UI
      */
+
 
     private Handler timeHandler = new Handler()
     {
@@ -64,6 +65,7 @@ public class MusicService extends Service {
         super.onCreate();
         helper = new Helper(this);
         mp3Infos = helper.getMP3Info();
+
         timeHandler.sendEmptyMessage(1);
     }
 
@@ -80,12 +82,13 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        currentPosition = intent.getIntExtra("currentPosition",0);
+
         songURI = mp3Infos.get(currentPosition).getUrl();
         int msg = intent.getIntExtra("msg",0);
         switch (msg)
         {
             case APPConstant.PLAY:
+                currentPosition = intent.getIntExtra("currentPosition",0);
                 if(isFirst)
                 {
                     initMedia();
@@ -130,21 +133,7 @@ public class MusicService extends Service {
 
         musicPlayer = new MediaPlayer();
         musicPlayer.setOnCompletionListener(onCompletionListener);
-//        musicPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-//            @Override
-//            public void onCompletion(MediaPlayer mp) {
-//                Log.v("gjh","currentPosition  1："+currentPosition);
-//                currentPosition++;
-//                Log.v("gjh","currentPosition  2："+currentPosition);
-//                if (currentPosition >= mp3Infos.size()) {
-//                    currentPosition = 0;
-//                }
-//                Log.v("gjh","currentPosition  3："+currentPosition);
-//                songURI = mp3Infos.get(currentPosition).getUrl();
-//                playMusic();
-//                sendMusicDurationBroad();
-//            }
-//        });
+
         //   musicPlayer.setAudioStreamType();
 
     }
@@ -152,13 +141,10 @@ public class MusicService extends Service {
      MediaPlayer.OnCompletionListener onCompletionListener = new  MediaPlayer.OnCompletionListener(){
          @Override
          public void onCompletion(MediaPlayer mp) {
-             Log.v("gjh","currentPosition  1："+currentPosition);
              currentPosition++;
-             Log.v("gjh","currentPosition  2："+currentPosition);
              if (currentPosition >= mp3Infos.size()) {
                  currentPosition = 0;
              }
-             Log.v("gjh","currentPosition  3："+currentPosition);
              songURI = mp3Infos.get(currentPosition).getUrl();
              playMusic();
              sendMusicDurationBroad();
